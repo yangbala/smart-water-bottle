@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>H2O-Care 照護智能水杯系統</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: #f0f7f6;
+        }
+        /* 溫潤的滾動條 */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #eef2f3;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        /* 模擬波浪動畫 */
+        @keyframes wave-animation {
+            0% { transform: translateX(0) translateZ(0) scaleY(1); }
+            50% { transform: translateX(-25%) translateZ(0) scaleY(0.85); }
+            100% { transform: translateX(-50%) translateZ(0) scaleY(1); }
+        }
+        .wave-bg {
+            animation: wave-animation 12s linear infinite;
+        }
+        /* 脈衝呼吸燈 */
+        @keyframes led-pulse {
+            0%, 100% { opacity: 0.3; box-shadow: 0 0 5px currentColor; }
+            50% { opacity: 1; box-shadow: 0 0 20px currentColor; }
+        }
+        .led-active {
+            animation: led-pulse 2s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800 flex flex-col">
+
+    <!-- 頂部導航欄 -->
+    <header class="bg-white border-b border-slate-100 shadow-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-teal-500 text-white p-2 rounded-xl flex items-center justify-center shadow-lg shadow-teal-500/30">
+                    <i class="fa-solid fa-glass-water-droplet text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                        H2O-Care <span class="text-xs bg-teal-100 text-teal-800 px-2 py-0.5 rounded-full font-medium">智能照護版</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">居家長輩水分攝取守護系統</p>
+                </div>
+            </div>
+
+            <!-- 水杯連線狀態 -->
+            <div class="flex items-center space-x-4">
+                <div class="hidden md:flex items-center space-x-2 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
+                    <span class="relative flex h-2 w-2">
+                        <span id="connection-pulse" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span id="connection-dot" class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span id="connection-status" class="text-xs font-medium text-slate-600">設備已連線 (H2O-Cup #091)</span>
+                </div>
+                <!-- 音量控制切換 -->
+                <button id="toggle-sound-btn" onclick="toggleSound()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 p-2.5 rounded-full transition-colors relative" title="切換提示音">
+                    <i id="sound-icon" class="fa-solid fa-volume-high text-sm"></i>
+                </button>
+                <!-- 快捷長輩切換 -->
+                <div class="flex items-center space-x-2">
+                    <img src="https://placehold.co/100x100/3b82f6/ffffff?text=👴" alt="長輩頭像" class="w-8 h-8 rounded-full ring-2 ring-teal-500 border border-white">
+                    <div class="hidden sm:block text-left">
+                        <p class="text-xs text-slate-400">目前照護對象</p>
+                        <p class="text-xs font-bold text-slate-700">林阿公 (78歲)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- 左側：智能水杯模擬器 (實體互動端) -->
+        <section class="lg:col-span-4 bg-white rounded-3xl border border-slate-100 p-6 shadow-sm flex flex-col justify-between space-y-6">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-md font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-microchip text-teal-500"></i>
+                        智能水杯模擬器
+                    </h2>
+                    <span class="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded-md">雙向虛擬模擬</span>
+                </div>
+                <p class="text-xs text-slate-400 mb-6">點擊此處按鈕可模擬長輩實際使用水杯之動作，右側儀表板將即時更新數據。</p>
+
+                <!-- 水杯本體視覺設計 -->
+                <div class="relative w-48 h-80 mx-auto my-4 flex flex-col justify-end items-center">
+                    
+                    <!-- 水杯外框（雙層玻璃真空質感） -->
+                    <div class="absolute inset-0 border-[6px] border-slate-300 bg-slate-50/20 rounded-b-[40px] rounded-t-lg shadow-inner z-10 pointer-events-none"></div>
+                    
+                    <!-- 頂蓋 / 充電口 -->
+                    <div class="absolute -top-4 left-1/2 -translate-x-1/2 w-40 h-5 bg-gradient-to-r from-slate-400 via-slate-500 to-slate-400 rounded-t-lg border-b-2 border-slate-600 shadow-md z-20 flex items-center justify-center">
+                        <div class="w-8 h-1 bg-slate-700 rounded-full"></div>
+                    </div>
+
+                    <!-- 智能杯身發光 LED 光圈 (底部) -->
+                    <div id="cup-led" class="absolute bottom-2 left-1/2 -translate-x-1/2 w-[85%] h-3 rounded-full bg-cyan-400 opacity-60 led-active z-20 transition-all duration-500"></div>
+
+                    <!-- 水杯 OLED 顯示螢幕 (中間靠上) -->
+                    <div class="absolute top-12 left-1/2 -translate-x-1/2 w-32 h-14 bg-slate-950 rounded-xl border-2 border-slate-800 z-20 shadow-lg flex flex-col items-center justify-center text-cyan-400 font-mono p-1 overflow-hidden">
+                        <!-- OLED 微型畫面內容 -->
+                        <div id="oled-screen" class="text-center w-full">
+                            <div class="flex justify-between items-center px-2 text-[10px]">
+                                <span id="oled-temp">42°C</span>
+                                <span id="oled-battery"><i class="fa-solid fa-battery-three-quarters"></i> 78%</span>
+                            </div>
+                            <div id="oled-main-display" class="text-xs font-bold mt-1 tracking-wider text-cyan-300">
+                                TDS: 12 (優)
+                            </div>
+                            <div id="oled-sub-display" class="text-[9px] text-emerald-400">
+                                今日已喝: <span id="oled-total-drank">750</span>ml
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 瓶內液體 (動態 SVG 高度控制) -->
+                    <div id="liquid-container" class="absolute bottom-0 left-[6px] right-[6px] rounded-b-[34px] overflow-hidden transition-all duration-500 z-0" style="height: 60%;">
+                        <!-- 飲品本體背景 (依據飲品種類而改變顏色) -->
+                        <div id="liquid-body" class="absolute inset-0 bg-gradient-to-t from-sky-400/80 to-cyan-300/60 transition-colors duration-500"></div>
+                        <!-- 水面波浪動畫 -->
+                        <svg class="absolute -top-4 left-0 w-[200%] h-6 fill-cyan-300/40 wave-bg" viewBox="0 0 100 20" preserveAspectRatio="none">
+                            <path d="M0 10 Q25 20, 50 10 T100 10 L100 20 L0 20 Z"></path>
+                        </svg>
+                    </div>
+
+                </div>
+
+                <!-- 模擬物理手動控制區 -->
+                <div class="grid grid-cols-2 gap-2 mt-4">
+                    <button onclick="simulateDrink(150)" class="bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white font-medium py-2.5 px-3 rounded-xl shadow-md shadow-teal-500/10 text-xs flex items-center justify-center gap-1.5 transition-all transform active:scale-95">
+                        <i class="fa-solid fa-wine-glass"></i>
+                        模擬喝一大口 (150ml)
+                    </button>
+                    <button onclick="simulateDrink(50)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all transform active:scale-95">
+                        <i class="fa-solid fa-droplet"></i>
+                        模擬喝一小口 (50ml)
+                    </button>
+                    <button onclick="openRefillModal()" class="col-span-2 bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white font-medium py-2.5 px-3 rounded-xl shadow-md shadow-sky-500/10 text-xs flex items-center justify-center gap-1.5 transition-all transform active:scale-95">
+                        <i class="fa-solid fa-faucet-drip"></i>
+                        倒水 / 補充飲品 (Refill)
+                    </button>
+                </div>
+            </div>
+
+            <!-- 實體感知器細節 -->
+            <div class="border-t border-slate-100 pt-4 mt-4">
+                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">水杯內建感測器</p>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="bg-slate-50 p-2 rounded-lg border border-slate-100 flex items-center justify-between">
+                        <span class="text-slate-500">水質 (TDS)</span>
+                        <span id="sensor-tds" class="font-bold text-emerald-600 font-mono">12 PPM</span>
+                    </div>
+                    <div class="bg-slate-50 p-2 rounded-lg border border-slate-100 flex items-center justify-between">
+                        <span class="text-slate-500">傾斜陀螺儀</span>
+                        <span id="sensor-gyro" class="font-bold text-slate-700 font-mono">0° (立放)</span>
+                    </div>
+                    <div class="bg-slate-50 p-2 rounded-lg border border-slate-100 flex items-center justify-between col-span-2">
+                        <span class="text-slate-500">杯蓋離合感應</span>
+                        <span id="sensor-lid" class="font-bold text-slate-700">已蓋緊 <i class="fa-solid fa-lock text-[10px] text-teal-500 ml-1"></i></span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 中間：照護主儀表板 -->
+        <section class="lg:col-span-5 flex flex-col space-y-6">
+            
+            <!-- 即時飲水進度環 -->
+            <div class="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm relative overflow-hidden">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h2 class="text-md font-bold text-slate-900">今日飲水量進度</h2>
+                        <p class="text-xs text-slate-400">目前達成進度與健康分析</p>
+                    </div>
+                    <div class="bg-teal-50 text-teal-700 px-2.5 py-1 rounded-full text-xs font-semibold">
+                        目標: <span id="target-display">2000</span>ml
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row items-center justify-around py-4">
+                    <!-- 動態進度環 -->
+                    <div class="relative w-40 h-40 flex items-center justify-center">
+                        <!-- 背景圓環 -->
+                        <svg class="w-full h-full transform -rotate-90">
+                            <circle cx="80" cy="80" r="70" class="stroke-slate-100" stroke-width="12" fill="transparent"/>
+                            <!-- 進度圓環 -->
+                            <circle id="progress-circle" cx="80" cy="80" r="70" class="stroke-teal-500 transition-all duration-1000 ease-out" stroke-width="12" fill="transparent" stroke-dasharray="439.8" stroke-dashoffset="439.8" stroke-linecap="round"/>
+                        </svg>
+                        <!-- 內部文字 -->
+                        <div class="absolute text-center">
+                            <span id="progress-percent" class="text-3xl font-black text-slate-900 font-mono">0%</span>
+                            <p class="text-xs text-slate-400 mt-1">目前進度</p>
+                        </div>
+                    </div>
+
+                    <!-- 飲水數據與評語 -->
+                    <div class="mt-4 sm:mt-0 space-y-3 text-center sm:text-left">
+                        <div>
+                            <span class="text-4xl font-black text-slate-900 font-mono" id="current-drank-display">750</span>
+                            <span class="text-slate-400 text-sm"> / <span id="target-display-sub">2000</span> ml</span>
+                        </div>
+                        <div id="health-advice" class="bg-teal-50/50 border border-teal-100/50 rounded-2xl p-3 text-xs max-w-xs">
+                            <p class="font-bold text-teal-800 flex items-center gap-1">
+                                <i class="fa-solid fa-circle-check text-teal-500"></i> 水分攝取狀態佳
+                            </p>
+                            <p class="text-slate-600 mt-1 leading-relaxed">林阿公今天水分補充得很好！建議下午3點前再補充一杯溫開水。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 水杯狀態關鍵指標卡片 -->
+            <div class="grid grid-cols-3 gap-4">
+                <!-- 溫度 -->
+                <div class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex flex-col justify-between transition-all hover:shadow-md">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs text-slate-400">目前水溫</span>
+                        <span id="temp-badge" class="p-1.5 rounded-lg bg-orange-50 text-orange-500 text-xs">
+                            <i id="temp-icon" class="fa-solid fa-temperature-three-quarters"></i>
+                        </span>
+                    </div>
+                    <div>
+                        <span id="cup-temp" class="text-2xl font-bold font-mono text-slate-800">42</span><span class="text-xs font-bold text-slate-400 ml-0.5">°C</span>
+                        <p id="temp-text" class="text-[10px] text-orange-600 font-semibold mt-1">溫和適口</p>
+                    </div>
+                </div>
+
+                <!-- 電量 -->
+                <div class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex flex-col justify-between transition-all hover:shadow-md">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs text-slate-400">杯體電量</span>
+                        <span class="p-1.5 rounded-lg bg-emerald-50 text-emerald-500 text-xs">
+                            <i class="fa-solid fa-battery-full"></i>
+                        </span>
+                    </div>
+                    <div>
+                        <span id="cup-battery" class="text-2xl font-bold font-mono text-slate-800">78</span><span class="text-xs font-bold text-slate-400 ml-0.5">%</span>
+                        <p class="text-[10px] text-emerald-600 font-semibold mt-1">電量充沛</p>
+                    </div>
+                </div>
+
+                <!-- 水質純度 -->
+                <div class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex flex-col justify-between transition-all hover:shadow-md">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs text-slate-400">水質檢測</span>
+                        <span class="p-1.5 rounded-lg bg-sky-50 text-sky-500 text-xs">
+                            <i class="fa-solid fa-shield-halved"></i>
+                        </span>
+                    </div>
+                    <div>
+                        <span id="cup-tds" class="text-2xl font-bold font-mono text-slate-800">12</span><span class="text-xs font-bold text-slate-400 ml-0.5">PPM</span>
+                        <p id="tds-status-text" class="text-[10px] text-sky-600 font-semibold mt-1">極致純淨</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 自訂喝水排程與提醒控制 -->
+            <div class="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                        <i class="fa-regular fa-clock text-slate-500"></i>
+                        智能排程提醒設定
+                    </h3>
+                    <button onclick="addSchedule()" class="text-xs text-teal-500 hover:text-teal-600 font-semibold">
+                        <i class="fa-solid fa-plus mr-0.5"></i> 新增時段
+                    </button>
+                </div>
+                <!-- 提醒時段清單 -->
+                <div id="schedule-list" class="space-y-2">
+                    <!-- 時段1 -->
+                    <div class="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        <div class="flex items-center space-x-3">
+                            <span class="bg-amber-100 text-amber-700 p-1.5 rounded-lg text-xs font-bold"><i class="fa-regular fa-sun"></i> 晨間</span>
+                            <div>
+                                <p class="text-xs font-bold text-slate-700">08:00 (起床喝水)</p>
+                                <p class="text-[10px] text-slate-400">提醒喝水量: 250ml | 溫水</p>
+                            </div>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" checked class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal-500"></div>
+                        </label>
+                    </div>
+                    <!-- 時段2 -->
+                    <div class="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        <div class="flex items-center space-x-3">
+                            <span class="bg-teal-100 text-teal-700 p-1.5 rounded-lg text-xs font-bold"><i class="fa-solid fa-utensils"></i> 午餐後</span>
+                            <div>
+                                <p class="text-xs font-bold text-slate-700">13:30 (促進消化)</p>
+                                <p class="text-[10px] text-slate-400">提醒喝水量: 200ml | 溫水</p>
+                            </div>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" checked class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal-500"></div>
+                        </label>
+                    </div>
+                    <!-- 時段3 -->
+                    <div class="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        <div class="flex items-center space-x-3">
+                            <span class="bg-indigo-100 text-indigo-700 p-1.5 rounded-lg text-xs font-bold"><i class="fa-regular fa-moon"></i> 晚間</span>
+                            <div>
+                                <p class="text-xs font-bold text-slate-700">19:30 (晚餐後半小時)</p>
+                                <p class="text-[10px] text-slate-400">提醒喝水量: 150ml | 溫熱水</p>
+                            </div>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" checked class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal-500"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 右側：遠端照護門戶與數據歷史 -->
+        <section class="lg:col-span-3 flex flex-col space-y-6">
+            
+            <!-- 照護者遠端遙控面板 -->
+            <div class="bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 text-white rounded-3xl p-5 shadow-lg relative overflow-hidden">
+                <!-- 裝飾微光 -->
+                <div class="absolute -right-10 -bottom-10 w-32 h-32 bg-indigo-500 rounded-full blur-3xl opacity-20"></div>
+                <div class="absolute -left-10 -top-10 w-32 h-32 bg-sky-500 rounded-full blur-3xl opacity-10"></div>
+
+                <div class="flex items-center justify-between mb-4 relative z-10">
+                    <h3 class="text-sm font-bold flex items-center gap-1.5">
+                        <i class="fa-solid fa-mobile-screen-button text-indigo-300"></i>
+                        照護APP 模擬端
+                    </h3>
+                    <span class="text-[10px] bg-indigo-500/30 text-indigo-200 px-2 py-0.5 rounded-full font-medium">子女連線中</span>
+                </div>
+
+                <p class="text-xs text-indigo-200 mb-4 leading-relaxed">
+                    您可以點擊下方按鈕，以「女兒(遠端)」的身分，將文字短語發送到林阿公水杯的電子螢幕上，同時引發水杯震動與發光！
+                </p>
+
+                <!-- 發送關懷快速短語 -->
+                <div class="space-y-3 relative z-10">
+                    <div class="text-[11px] uppercase tracking-wider text-indigo-300 font-bold mb-1">
+                        發送一鍵提示 / 留言
+                    </div>
+                    <div class="grid grid-cols-1 gap-2">
+                        <button onclick="sendRemoteMessage('該喝水囉！❤️', 'heart')" class="bg-indigo-800/80 hover:bg-indigo-700/80 text-white p-2 rounded-xl text-xs flex items-center justify-between transition-colors border border-indigo-700">
+                            <span>"該喝水囉！❤️"</span>
+                            <i class="fa-solid fa-paper-plane text-[10px] text-indigo-300"></i>
+                        </button>
+                        <button onclick="sendRemoteMessage('阿公，吃藥配水！', 'pill')" class="bg-indigo-800/80 hover:bg-indigo-700/80 text-white p-2 rounded-xl text-xs flex items-center justify-between transition-colors border border-indigo-700">
+                            <span>"阿公，吃藥配水！"</span>
+                            <i class="fa-solid fa-paper-plane text-[10px] text-indigo-300"></i>
+                        </button>
+                        <button onclick="sendRemoteMessage('愛你喔，多喝點水', 'smile')" class="bg-indigo-800/80 hover:bg-indigo-700/80 text-white p-2 rounded-xl text-xs flex items-center justify-between transition-colors border border-indigo-700">
+                            <span>"愛你喔，多喝點水"</span>
+                            <i class="fa-solid fa-paper-plane text-[10px] text-indigo-300"></i>
+                        </button>
+                    </div>
+
+                    <!-- 自訂短語輸入 -->
+                    <div class="mt-4">
+                        <label class="text-[10px] text-indigo-300 block mb-1">客製化訊息 (限10字)</p>
+                        <div class="flex gap-1">
+                            <input type="text" id="custom-msg" maxlength="10" placeholder="例如：加油！多喝水" class="bg-slate-800/90 text-white text-xs border border-indigo-700 rounded-lg px-2 py-1.5 flex-grow focus:outline-none focus:border-cyan-400">
+                            <button onclick="sendCustomRemoteMessage()" class="bg-cyan-500 hover:bg-cyan-600 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs transition-colors">
+                                發送
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 一週飲水趨勢分析 -->
+            <div class="bg-white rounded-3xl border border-slate-100 p-5 shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-chart-line text-teal-500"></i>
+                        一週歷史水攝取
+                    </h3>
+                    <span class="text-[10px] text-slate-400">近7天</span>
+                </div>
+                
+                <!-- Chart.js 容器 -->
+                <div class="relative w-full h-36">
+                    <canvas id="weeklyChart"></canvas>
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-slate-50 flex justify-between text-[11px] text-slate-500">
+                    <span>週平均飲水量: <strong class="text-slate-700 font-bold">1820 ml</strong></span>
+                    <span class="text-emerald-500 font-semibold flex items-center"><i class="fa-solid fa-circle-arrow-up mr-0.5"></i> 較上週+12%</span>
+                </div>
+            </div>
+
+            <!-- 照護系統即時活動日誌 -->
+            <div class="bg-white rounded-3xl border border-slate-100 p-5 shadow-sm flex-grow flex flex-col justify-between">
+                <div>
+                    <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                        <i class="fa-solid fa-list-ul text-slate-500"></i>
+                        即時照護日誌
+                    </h3>
+                    <div id="log-container" class="space-y-3 max-h-[160px] overflow-y-auto pr-1">
+                        <!-- 動態記錄會塞在這裡 -->
+                    </div>
+                </div>
+                <div class="pt-3 border-t border-slate-100 mt-4 flex justify-between items-center text-[10px] text-slate-400">
+                    <span>資料自動同步備份中</span>
+                    <button onclick="clearLogs()" class="hover:text-red-500"><i class="fa-solid fa-trash-can"></i> 清除日誌</button>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- 補水/注水 對話框 (Modal) -->
+    <div id="refill-modal" class="hidden fixed inset-0 bg-slate-950/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl relative">
+            <button onclick="closeRefillModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-faucet-drip text-sky-500"></i>
+                為智能水杯倒入飲品
+            </h3>
+
+            <!-- 選擇飲品種類 -->
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 block mb-2">1. 選擇飲品種類 (將影響水質 TDS 與色澤)</label>
+                    <div class="grid grid-cols-4 gap-2">
+                        <!-- 溫水 -->
+                        <button onclick="selectDrinkType('water')" id="btn-drink-water" class="drink-type-btn border-2 border-sky-500 bg-sky-50 text-sky-700 p-2 rounded-xl text-center flex flex-col items-center gap-1 transition-all">
+                            <span class="text-xl">💧</span>
+                            <span class="text-[10px] font-bold">溫開水</span>
+                        </button>
+                        <!-- 茶 -->
+                        <button onclick="selectDrinkType('tea')" id="btn-drink-tea" class="drink-type-btn border-2 border-slate-100 hover:bg-slate-50 text-slate-700 p-2 rounded-xl text-center flex flex-col items-center gap-1 transition-all">
+                            <span class="text-xl">🍵</span>
+                            <span class="text-[10px] font-bold">日式綠茶</span>
+                        </button>
+                        <!-- 咖啡 -->
+                        <button onclick="selectDrinkType('coffee')" id="btn-drink-coffee" class="drink-type-btn border-2 border-slate-100 hover:bg-slate-50 text-slate-700 p-2 rounded-xl text-center flex flex-col items-center gap-1 transition-all">
+                            <span class="text-xl">☕</span>
+                            <span class="text-[10px] font-bold">美式黑咖啡</span>
+                        </button>
+                        <!-- 牛奶/高營養 -->
+                        <button onclick="selectDrinkType('milk')" id="btn-drink-milk" class="drink-type-btn border-2 border-slate-100 hover:bg-slate-50 text-slate-700 p-2 rounded-xl text-center flex flex-col items-center gap-1 transition-all">
+                            <span class="text-xl">🥛</span>
+                            <span class="text-[10px] font-bold">配方牛奶</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 選擇水量大小 -->
+                <div>
+                    <label class="text-xs font-bold text-slate-500 block mb-2">2. 設定倒水量 (容量限制：500ml)</label>
+                    <div class="relative pt-1">
+                        <input type="range" id="refill-volume" min="50" max="500" step="50" value="250" class="w-full accent-teal-500" oninput="updateRefillValText(this.value)">
+                        <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+                            <span>50ml</span>
+                            <span class="font-bold text-teal-600 text-sm" id="refill-val-text">250ml</span>
+                            <span>500ml</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 選擇溫度 -->
+                <div>
+                    <label class="text-xs font-bold text-slate-500 block mb-2">3. 設定液體溫度</label>
+                    <div class="relative pt-1">
+                        <input type="range" id="refill-temp" min="10" max="80" step="5" value="45" class="w-full accent-orange-500" oninput="updateRefillTempText(this.value)">
+                        <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+                            <span class="text-blue-500">10°C (冰涼)</span>
+                            <span class="font-bold text-orange-600 text-sm" id="refill-temp-text">45°C</span>
+                            <span class="text-red-500">80°C (燙口)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="confirmRefill()" class="w-full bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white font-bold py-3 rounded-2xl shadow-lg shadow-teal-500/10 text-xs tracking-wider transition-all transform active:scale-95">
+                    開始注水 & 同步至杯身
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 自訂提示 Toast 容器 -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <!-- 頁尾 -->
+    <footer class="bg-white border-t border-slate-100 py-6 text-center text-xs text-slate-400 mt-auto">
+        <div class="max-w-7xl mx-auto px-4">
+            <p>© 2026 H2O-Care 智能健康照護系統. All Rights Reserved.</p>
+            <p class="mt-1">結合 IoT 傳感、雲端關懷與長輩照護的智慧居家解決方案</p>
+        </div>
+    </footer>
+
+    <script>
+        /* 
+         * 系統全域變數 & 預設值 
+         */
+        let currentDrank = 750; // 目前今日已喝 (ml)
+        let targetDrank = 2000; // 今日目標水量 (ml)
+        
+        // 虛擬水杯狀態
+        let cupCapacity = 500; // 滿杯容量 500ml
+        let currentWaterInCup = 300; // 目前杯內剩餘水量 (ml)
+        let currentTemp = 42; // 杯內水溫 (C)
+        let currentTds = 12; // 杯內水質 TDS (PPM)
+        let currentBattery = 78; // 杯子電量
+        let isLidClosed = true; // 杯蓋是否關緊
+        
+        // 當前選擇的注入飲品屬性
+        let selectedDrink = 'water';
+        const drinkConfigs = {
+            water: { label: '溫開水', tds: 12, colorFrom: 'rgba(56, 189, 248, 0.8)', colorTo: 'rgba(6, 182, 212, 0.6)', glow: '#22d3ee' },
+            tea: { label: '日式綠茶', tds: 165, colorFrom: 'rgba(163, 230, 53, 0.8)', colorTo: 'rgba(101, 163, 13, 0.6)', glow: '#a3e635' },
+            coffee: { label: '美式黑咖啡', tds: 380, colorFrom: 'rgba(120, 113, 108, 0.95)', colorTo: 'rgba(68, 64, 60, 0.85)', glow: '#78716c' },
+            milk: { label: '配方牛奶', tds: 290, colorFrom: 'rgba(248, 250, 252, 0.95)', colorTo: 'rgba(226, 232, 240, 0.85)', glow: '#ffffff' }
+        };
+
+        // 音訊設定
+        let audioCtx = null;
+        let isSoundEnabled = true;
+
+        // 初始化 Chart.js 實例
+        let weeklyChartInstance = null;
+
+        // 動態合成音效，免下載外部 MP3，增強即時互動感
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSynthTone(freqs, duration, type = 'sine', sweep = false) {
+            if (!isSoundEnabled) return;
+            initAudio();
+            try {
+                const now = audioCtx.currentTime;
+                
+                freqs.forEach((freq, index) => {
+                    const osc = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+                    
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, now);
+                    
+                    if (sweep) {
+                        // 頻率滑動 (如倒水聲)
+                        osc.frequency.exponentialRampToValueAtTime(freq * 1.5, now + duration);
+                    }
+                    
+                    // 漸弱釋放 (Release) 防止爆音
+                    gainNode.gain.setValueAtTime(0.1, now);
+                    gainNode.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+                    
+                    osc.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    
+                    osc.start(now + (index * 0.08));
+                    osc.stop(now + duration + (index * 0.08));
+                });
+            } catch (e) {
+                console.warn('Audio synthesis failed:', e);
+            }
+        }
+
+        // 各類事件特定音效
+        function playSoundDrink() {
+            // 咕嚕咕嚕聲 (頻率向下微調)
+            playSynthTone([180, 220], 0.3, 'triangle');
+            setTimeout(() => playSynthTone([150, 190], 0.3, 'triangle'), 150);
+        }
+
+        function playSoundRefill() {
+            // 注水聲 (高頻向上滑音)
+            playSynthTone([300, 450], 0.6, 'sine', true);
+        }
+
+        function playSoundCare() {
+            // 溫馨雙音和弦提醒 (C和弦)
+            playSynthTone([523.25, 659.25, 783.99], 0.5, 'sine'); // C5, E5, G5
+        }
+
+        function playSoundGoal() {
+            // 達成目標音效 (活潑大調和弦)
+            playSynthTone([523.25, 659.25, 783.99, 1046.50], 0.8, 'sine');
+        }
+
+        function toggleSound() {
+            isSoundEnabled = !isSoundEnabled;
+            const btn = document.getElementById('toggle-sound-btn');
+            const icon = document.getElementById('sound-icon');
+            if (isSoundEnabled) {
+                icon.className = 'fa-solid fa-volume-high text-sm';
+                btn.className = 'bg-slate-100 hover:bg-slate-200 text-slate-600 p-2.5 rounded-full transition-colors relative';
+                showToast('提示音效已開啟', 'info');
+                initAudio();
+                playSynthTone([440], 0.1);
+            } else {
+                icon.className = 'fa-solid fa-volume-xmark text-sm';
+                btn.className = 'bg-red-50 hover:bg-red-100 text-red-600 p-2.5 rounded-full transition-colors relative';
+                showToast('提示音效已關閉', 'warning');
+            }
+        }
+
+        // 自製非阻塞 Toast 提示
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let bgClass = 'bg-white text-slate-800 border-slate-100';
+            let iconClass = 'fa-circle-info text-blue-500';
+            
+            if (type === 'success') {
+                bgClass = 'bg-emerald-50 text-emerald-900 border-emerald-100';
+                iconClass = 'fa-circle-check text-emerald-500';
+            } else if (type === 'warning') {
+                bgClass = 'bg-amber-50 text-amber-900 border-amber-100';
+                iconClass = 'fa-triangle-exclamation text-amber-500';
+            } else if (type === 'care') {
+                bgClass = 'bg-gradient-to-r from-indigo-900 to-indigo-950 text-white border-indigo-800';
+                iconClass = 'fa-heart text-pink-400 animate-bounce';
+            }
+
+            toast.className = `flex items-center space-x-3 px-4 py-3 rounded-2xl border shadow-lg ${bgClass} transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto max-w-sm`;
+            toast.innerHTML = `
+                <i class="fa-solid ${iconClass} text-base flex-shrink-0"></i>
+                <div class="text-xs font-semibold leading-snug">${message}</div>
+            `;
+            
+            container.appendChild(toast);
+            
+            // 觸發進場動畫
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 50);
+
+            // 3秒後自動消失
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 4000);
+        }
+
+        // 新增日誌記錄
+        function addLog(message, category = 'system') {
+            const container = document.getElementById('log-container');
+            const logItem = document.createElement('div');
+            logItem.className = 'flex items-start space-x-2 text-[11px] leading-relaxed';
+            
+            const now = new Date();
+            const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+            
+            let dotColor = 'bg-slate-400';
+            if (category === 'drink') dotColor = 'bg-emerald-500';
+            else if (category === 'care') dotColor = 'bg-indigo-500 animate-pulse';
+            else if (category === 'refill') dotColor = 'bg-sky-500';
+
+            logItem.innerHTML = `
+                <span class="text-slate-400 font-mono flex-shrink-0 mt-0.5">${timeStr}</span>
+                <span class="w-1.5 h-1.5 rounded-full ${dotColor} mt-1.5 flex-shrink-0"></span>
+                <p class="text-slate-600 flex-grow">${message}</p>
+            `;
+            
+            container.insertBefore(logItem, container.firstChild);
+        }
+
+        function clearLogs() {
+            document.getElementById('log-container').innerHTML = '';
+            addLog('日誌已清除');
+        }
+
+        // 模擬喝水動作
+        function simulateDrink(amount) {
+            if (currentWaterInCup <= 0) {
+                showToast('水杯空了！請先倒水 (Refill)。', 'warning');
+                playSynthTone([300, 200], 0.3, 'sawtooth');
+                return;
+            }
+
+            // 若喝水容量大於杯子剩餘容量，以剩餘容量為準
+            const actualDrank = Math.min(amount, currentWaterInCup);
+            currentWaterInCup -= actualDrank;
+            currentDrank += actualDrank;
+
+            // 儲存至本地快取
+            localStorage.setItem('drank_today', currentDrank);
+
+            // 播放音效
+            playSoundDrink();
+
+            // 新增歷史日誌
+            const drinkText = drinkConfigs[selectedDrink].label;
+            addLog(`林阿公喝了 ${actualDrank}ml 的【${drinkText}】`, 'drink');
+            showToast(`模擬成功！林阿公飲用了 ${actualDrank}ml ${drinkText}`, 'success');
+
+            // 震動杯底呼吸燈特效
+            const led = document.getElementById('cup-led');
+            led.style.backgroundColor = '#10b981'; // 轉為綠色閃爍
+            setTimeout(() => {
+                led.style.backgroundColor = drinkConfigs[selectedDrink].glow;
+            }, 1000);
+
+            // 當天喝水量滿格彩蛋
+            if (currentDrank >= targetDrank && (currentDrank - actualDrank) < targetDrank) {
+                setTimeout(() => {
+                    playSoundGoal();
+                    showToast('🎉 太棒了！今日飲水目標 100% 達成！', 'success');
+                    addLog('今日飲水量目標圓滿達成！🏆', 'system');
+                }, 1000);
+            }
+
+            // 更新 UI
+            updateUI();
+        }
+
+        // 倒水彈窗控制
+        function openRefillModal() {
+            document.getElementById('refill-modal').classList.remove('hidden');
+        }
+
+        function closeRefillModal() {
+            document.getElementById('refill-modal').classList.add('hidden');
+        }
+
+        function selectDrinkType(type) {
+            selectedDrink = type;
+            document.querySelectorAll('.drink-type-btn').forEach(btn => {
+                btn.className = 'drink-type-btn border-2 border-slate-100 hover:bg-slate-50 text-slate-700 p-2 rounded-xl text-center flex flex-col items-center gap-1 transition-all';
+            });
+            const activeBtn = document.getElementById(`btn-drink-${type}`);
+            
+            // 各飲品亮點色
+            if (type === 'water') activeBtn.className = 'drink-type-btn border-2 border-sky-500 bg-sky-50 text-sky-700 p-2 rounded-xl text-center flex flex-col items-center gap-1 transition-all';
+            if (type === 'tea') activeBtn.className = 'drink-type-btn border-2 border-lime-500 bg-lime-50 text-lime-700 p-2 rounded-xl text-center flex flex-col items-center gap-1 transition-all';
+            if (type === 'coffee') activeBtn.className = 'drink-type-btn border-2 border-stone-500 bg-stone-50 text-stone-700 p-2 rounded-xl text-center flex flex-col items-center gap-1 transition-all';
+            if (type === 'milk') activeBtn.className = 'drink-type-btn border-2 border-slate-400 bg-slate-50 text-slate-700 p-2 rounded-xl text-center flex flex-col items-center gap-1 transition-all';
+        }
+
+        function updateRefillValText(val) {
+            document.getElementById('refill-val-text').innerText = `${val}ml`;
+        }
+
+        function updateRefillTempText(val) {
+            document.getElementById('refill-temp-text').innerText = `${val}°C`;
+        }
+
+        // 確定加水
+        function confirmRefill() {
+            const volInput = parseInt(document.getElementById('refill-volume').value);
+            const tempInput = parseInt(document.getElementById('refill-temp').value);
+            
+            currentWaterInCup = Math.min(currentWaterInCup + volInput, cupCapacity);
+            currentTemp = tempInput;
+            currentTds = drinkConfigs[selectedDrink].tds;
+
+            playSoundRefill();
+            addLog(`向水杯注入了 ${volInput}ml 【${drinkConfigs[selectedDrink].label}】，溫度 ${currentTemp}°C`, 'refill');
+            showToast(`已向杯體充填 ${volInput}ml ${drinkConfigs[selectedDrink].label}`, 'success');
+
+            closeRefillModal();
+            updateUI();
+        }
+
+        // 發送遠端提示訊息至水杯 OLED
+        function sendRemoteMessage(text, iconType) {
+            playSoundCare();
+            addLog(`遠端子女發送關懷提醒: "${text}"`, 'care');
+            showToast(`已透過雲端將「${text}」推送到杯身`, 'care');
+
+            // 模擬物理水杯 OLED 與 LED 受到關懷反應
+            const oledMain = document.getElementById('oled-main-display');
+            const oledSub = document.getElementById('oled-sub-display');
+            const led = document.getElementById('cup-led');
+
+            // LED 呼吸燈色調切換為愛心粉紅色
+            led.style.backgroundColor = '#ec4899'; // Pink
+            led.classList.add('scale-105');
+
+            let iconEmoji = '❤️';
+            if (iconType === 'pill') iconEmoji = '💊';
+            if (iconType === 'smile') iconEmoji = '😊';
+
+            oledMain.className = "text-[11px] font-bold mt-1 tracking-normal text-pink-300 animate-bounce";
+            oledMain.innerText = `${iconEmoji} ${text}`;
+            oledSub.innerText = "女兒遠端連線中...";
+
+            // 5秒後水杯 OLED 回復原本狀態
+            setTimeout(() => {
+                led.style.backgroundColor = drinkConfigs[selectedDrink].glow;
+                led.classList.remove('scale-105');
+                restoreOledDisplay();
+            }, 6000);
+        }
+
+        function sendCustomRemoteMessage() {
+            const input = document.getElementById('custom-msg');
+            const text = input.value.trim();
+            if (!text) {
+                showToast('請輸入訊息內容', 'warning');
+                return;
+            }
+            sendRemoteMessage(text, 'smile');
+            input.value = '';
+        }
+
+        function restoreOledDisplay() {
+            const oledMain = document.getElementById('oled-main-display');
+            const oledSub = document.getElementById('oled-sub-display');
+            
+            oledMain.className = "text-xs font-bold mt-1 tracking-wider text-cyan-300";
+            oledMain.innerHTML = `TDS: ${currentTds} (${getTdsDesc(currentTds)})`;
+            oledSub.innerHTML = `今日已喝: <span id="oled-total-drank">${currentDrank}</span>ml`;
+        }
+
+        function getTdsDesc(tds) {
+            if (tds <= 50) return '優';
+            if (tds <= 150) return '良';
+            if (tds <= 300) return '普通';
+            return '偏高';
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('weeklyChart').getContext('2d');
+            
+            // 預設一週飲水量
+            const data = [1600, 1850, 1500, 2100, 1950, 1750, currentDrank];
+            
+            weeklyChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['一', '二', '三', '四', '五', '六', '日'],
+                    datasets: [{
+                        label: '每日飲水量(ml)',
+                        data: data,
+                        backgroundColor: 'rgba(20, 184, 166, 0.2)',
+                        borderColor: 'rgba(20, 184, 166, 1)',
+                        borderWidth: 2,
+                        borderRadius: 6,
+                        hoverBackgroundColor: 'rgba(20, 184, 166, 0.4)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 2500,
+                            grid: { color: '#f1f5f9' },
+                            ticks: { font: { size: 9 }, stepSize: 500 }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { size: 10 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateChart() {
+            if (weeklyChartInstance) {
+                // 更新今日(星期日)之數值
+                weeklyChartInstance.data.datasets[0].data[6] = currentDrank;
+                weeklyChartInstance.update();
+            }
+        }
+
+        function addSchedule() {
+            const time = prompt("請輸入新增提醒時間 (例如 15:30):", "15:30");
+            if (!time) return;
+            const amt = prompt("請輸入建議喝水量 (ml):", "200");
+            if (!amt) return;
+
+            const list = document.getElementById('schedule-list');
+            const newSchedule = document.createElement('div');
+            newSchedule.className = 'flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-100';
+            newSchedule.innerHTML = `
+                <div class="flex items-center space-x-3">
+                    <span class="bg-teal-100 text-teal-700 p-1.5 rounded-lg text-xs font-bold"><i class="fa-regular fa-clock"></i> 自訂</span>
+                    <div>
+                        <p class="text-xs font-bold text-slate-700">${time} (手動提醒)</p>
+                        <p class="text-[10px] text-slate-400">提醒喝水量: ${amt}ml</p>
+                    </div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" checked class="sr-only peer">
+                    <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal-500"></div>
+                </label>
+            `;
+            list.appendChild(newSchedule);
+            showToast(`自訂提醒排程已設置：${time} (${amt}ml)`, 'success');
+            addLog(`新增提醒時間：${time}，提醒飲用 ${amt}ml`, 'system');
+        }
+
+        function updateUI() {
+            // 1. 水杯視覺模擬更新 (高度百分比與顏色)
+            const liquidPercent = (currentWaterInCup / cupCapacity) * 100;
+            const container = document.getElementById('liquid-container');
+            const body = document.getElementById('liquid-body');
+            const led = document.getElementById('cup-led');
+
+            container.style.height = `${liquidPercent}%`;
+            body.style.background = `linear-gradient(to top, ${drinkConfigs[selectedDrink].colorFrom}, ${drinkConfigs[selectedDrink].colorTo})`;
+            led.style.backgroundColor = drinkConfigs[selectedDrink].glow;
+
+            // 2. 水杯實體感測器讀數更新
+            document.getElementById('sensor-tds').innerText = `${currentTds} PPM`;
+            document.getElementById('sensor-gyro').innerText = currentWaterInCup > 0 ? '0° (垂直端正)' : '0° (杯內空)';
+
+            // 3. OLED 狀態畫面更新
+            document.getElementById('oled-temp').innerText = `${currentTemp}°C`;
+            document.getElementById('oled-battery').innerHTML = `<i class="fa-solid fa-battery-three-quarters"></i> ${currentBattery}%`;
+            document.getElementById('oled-main-display').innerHTML = `TDS: ${currentTds} <span class="text-[9px]">(${getTdsDesc(currentTds)})</span>`;
+            document.getElementById('oled-total-drank').innerText = currentDrank;
+
+            // 4. 即時狀態卡片更新
+            document.getElementById('cup-temp').innerText = currentTemp;
+            document.getElementById('cup-tds').innerText = currentTds;
+            document.getElementById('cup-battery').innerText = currentBattery;
+
+            // 溫度顏色狀態
+            const tempBadge = document.getElementById('temp-badge');
+            const tempText = document.getElementById('temp-text');
+            if (currentTemp < 30) {
+                tempBadge.className = 'p-1.5 rounded-lg bg-blue-50 text-blue-500 text-xs';
+                tempText.className = 'text-[10px] text-blue-600 font-semibold mt-1';
+                tempText.innerText = '冰冷清涼';
+            } else if (currentTemp <= 50) {
+                tempBadge.className = 'p-1.5 rounded-lg bg-orange-50 text-orange-500 text-xs';
+                tempText.className = 'text-[10px] text-orange-600 font-semibold mt-1';
+                tempText.innerText = '溫和適口';
+            } else {
+                tempBadge.className = 'p-1.5 rounded-lg bg-red-50 text-red-500 text-xs';
+                tempText.className = 'text-[10px] text-red-600 font-semibold mt-1';
+                tempText.innerText = '高溫燙手';
+            }
+
+            // TDS 狀態文字
+            const tdsText = document.getElementById('tds-status-text');
+            if (currentTds <= 50) {
+                tdsText.className = 'text-[10px] text-emerald-600 font-semibold mt-1';
+                tdsText.innerText = '極致純淨';
+            } else if (currentTds <= 150) {
+                tdsText.className = 'text-[10px] text-sky-600 font-semibold mt-1';
+                tdsText.innerText = '純淨水質';
+            } else if (currentTds <= 300) {
+                tdsText.className = 'text-[10px] text-amber-600 font-semibold mt-1';
+                tdsText.innerText = '普通礦物質';
+            } else {
+                tdsText.className = 'text-[10px] text-red-600 font-semibold mt-1';
+                tdsText.innerText = '高溶度飲品';
+            }
+
+            // 5. 飲水進度環更新
+            const percent = Math.min((currentDrank / targetDrank) * 100, 100);
+            document.getElementById('progress-percent').innerText = `${Math.round(percent)}%`;
+            document.getElementById('current-drank-display').innerText = currentDrank;
+
+            // 計算 SVG 圓環偏移量 (半徑 70, 週長 439.82)
+            const circumference = 2 * Math.PI * 70;
+            const offset = circumference - (percent / 100) * circumference;
+            document.getElementById('progress-circle').style.strokeDashoffset = offset;
+
+            // 更新動態健康建議
+            const adviceContainer = document.getElementById('health-advice');
+            if (percent < 30) {
+                adviceContainer.innerHTML = `
+                    <p class="font-bold text-amber-800 flex items-center gap-1">
+                        <i class="fa-solid fa-circle-exclamation text-amber-500"></i> 水分攝取不足
+                    </p>
+                    <p class="text-slate-600 mt-1 leading-relaxed">林阿公目前飲水量偏低，子女可使用右側APP遠端發送提醒，促其喝點水吧！</p>
+                `;
+                adviceContainer.className = "bg-amber-50/50 border border-amber-100/50 rounded-2xl p-3 text-xs max-w-xs";
+            } else if (percent < 80) {
+                adviceContainer.innerHTML = `
+                    <p class="font-bold text-sky-800 flex items-center gap-1">
+                        <i class="fa-solid fa-hourglass-half text-sky-500"></i> 持續累積水分
+                    </p>
+                    <p class="text-slate-600 mt-1 leading-relaxed">進度穩定，已達今日目標的一半以上。阿公保持這個節奏，非常棒！</p>
+                `;
+                adviceContainer.className = "bg-sky-50/50 border border-sky-100/50 rounded-2xl p-3 text-xs max-w-xs";
+            } else {
+                adviceContainer.innerHTML = `
+                    <p class="font-bold text-emerald-800 flex items-center gap-1">
+                        <i class="fa-solid fa-circle-check text-emerald-500"></i> 水分攝取充足
+                    </p>
+                    <p class="text-slate-600 mt-1 leading-relaxed">太棒了！今日飲水量已達成。目前林阿公處於絕佳的保水狀態，可以搭配簡單散步。</p>
+                `;
+                adviceContainer.className = "bg-emerald-50/50 border border-emerald-100/50 rounded-2xl p-3 text-xs max-w-xs";
+            }
+
+            // 6. 圖表同步更新
+            updateChart();
+        }
+
+        // 頁面載入初始化
+        window.onload = function() {
+            // 從 LocalStorage 載入先前儲存的資料 (如果有)
+            if (localStorage.getItem('drank_today')) {
+                currentDrank = parseInt(localStorage.getItem('drank_today'));
+            }
+
+            // 初始化 Chart.js
+            initChart();
+
+            // 更新一次介面
+            updateUI();
+
+            // 寫入首條初始化日誌
+            addLog("H2O-Care 智能照護水杯線上管理端初始化成功", "system");
+            addLog("杯身微控制器(虛擬模擬)已與照護雲同步", "system");
+
+            // 定期模擬自然降溫與放電
+            setInterval(() => {
+                if (currentTemp > 26) {
+                    currentTemp -= 1; // 每30秒降低一度
+                    updateUI();
+                }
+            }, 30000);
+
+            setInterval(() => {
+                if (currentBattery > 1) {
+                    currentBattery -= 1; // 每45秒消耗 1% 電量
+                    updateUI();
+                }
+            }, 45000);
+        };
+    </script>
+</body>
+</html>
